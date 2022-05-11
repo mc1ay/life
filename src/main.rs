@@ -9,6 +9,7 @@ use std::thread::sleep;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
+
 struct Args {
     /// Grid height
     #[clap(short, long, default_value_t = 20)]
@@ -66,6 +67,88 @@ fn output_state(args: &Args, bv1: &BitVec, start_y: i32, start_x: i32) {
     refresh();
 }
 
+fn update_state(args: &Args, bv1: &mut BitVec) {
+    // Create Temporary State
+    let mut bv_temp: BitVec = BitVec::new_fill(false, (args.height * args.width).try_into().unwrap());
+    for i in 0..args.height * args.width {
+        bv_temp.set(i.try_into().unwrap(), bv1.get(i.try_into().unwrap()));
+    }
+
+    // Check rules and update temp bit vector
+    for i in 0..args.height {
+        for j in 0..args.width {
+            let mut live_neighbors = 0;
+            // Check above
+            if i != 0 {
+                if bv1.get(((i - 1) * args.width + j).try_into().unwrap()) == true {
+                    live_neighbors += 1;
+                }
+            }
+            // Check above and left
+            if !(i == 0 || j == 0) {
+                if bv1.get(((i - 1) * args.width + j - 1).try_into().unwrap()) == true {
+                    live_neighbors += 1;
+                }                
+            }
+             // Check above and right
+             if !(i == 0 || j == args.width - 1) {
+                if bv1.get(((i - 1) * args.width + j + 1).try_into().unwrap()) == true {
+                    live_neighbors += 1;
+                }                
+            }
+             // Check left
+             if j != 0 {
+                if bv1.get((i * args.width + j - 1).try_into().unwrap()) == true {
+                    live_neighbors += 1;
+                }                
+            }
+             // Check right
+             if j != args.width - 1 {
+                if bv1.get((i * args.width + j + 1).try_into().unwrap()) == true {
+                    live_neighbors += 1;
+                }                
+            }    
+             // Check below and left
+             if ! (i == args.height - 1 || j == 0) {
+                if bv1.get(((i + 1) * args.width + j - 1).try_into().unwrap()) == true {
+                    live_neighbors += 1;
+                }                
+            }
+             // Check below
+             if i != args.height - 1 {
+                if bv1.get(((i + 1) * args.width + j).try_into().unwrap()) == true {
+                    live_neighbors += 1;
+                }                
+            }
+             // Check below
+             if !(i == args.height - 1 || j == args.width - 1) {
+                if bv1.get(((i + 1) * args.width + j + 1).try_into().unwrap()) == true {
+                    live_neighbors += 1;
+                }                
+            } 
+            // Now process rules
+            if bv1.get((i * args.width + j).try_into().unwrap()) == true {
+                if live_neighbors < 2 {
+                    bv_temp.set((i * args.width + j).try_into().unwrap(), false);
+                } 
+                else if live_neighbors > 3 {
+                    bv_temp.set((i * args.width + j).try_into().unwrap(), false);
+                }
+            }
+            else if live_neighbors == 3 {
+                bv_temp.set((i * args.width + j).try_into().unwrap(), true);
+            }                                                                         
+        }
+    }
+
+
+
+    // Copy temp bit vector to original
+    for i in 0..args.height * args.width {
+        bv1.set(i.try_into().unwrap(), bv_temp.get(i.try_into().unwrap()));
+    }
+}
+
 fn main() {
     // Get command line arguments
     let args = Args::parse();
@@ -84,9 +167,7 @@ fn main() {
     // Status/help info
     addstr("Conway's Game of Life\n");
     addstr("Generation: 0");
-    //mvprintw(LINES() - 1, 0, "Press q to exit");
     refresh();
-
 
     // Get the screen bounds
     let mut max_x = 0;
@@ -108,6 +189,7 @@ fn main() {
     {
         output_state(&args, &bv1, start_y, start_x);
         sleep(Duration::from_millis(args.interval.try_into().unwrap()));
+        update_state(&args, &mut bv1);
         generation += 1;
         mvprintw(1,12, &generation.to_string());
         refresh();
