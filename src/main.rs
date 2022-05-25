@@ -3,6 +3,8 @@ extern crate ncurses;
 use clap::Parser;
 use bv::BitVec;
 use rand::Rng;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
 use ncurses::*;
 use std::time::Duration;
 use std::thread::sleep;
@@ -30,10 +32,15 @@ struct Args {
     // Generations
     #[clap(short, long, default_value_t = 10)]
     generations: i32,
+
+    // RNG Seed
+    #[clap(short, long, default_value_t = 0)]
+    seed: u64,
 }
 
 fn generate_initial_state(args: &Args, bv1: &mut BitVec) {
-    let mut rng = rand::thread_rng();
+    let mut rng = StdRng::seed_from_u64(args.seed);
+
     for i in 0..args.height * args.width {
         if rng.gen_range(0..100) < args.density {
             bv1.set(i.try_into().unwrap(), true);
